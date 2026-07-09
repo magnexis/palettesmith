@@ -99,6 +99,23 @@ Still planned:
 - richer accessibility fixes
 - more component previews
 
+## Reporting Issues
+
+If you find a bug, please open a GitHub issue using the repo's issue templates:
+
+- bug reports: [`.github/ISSUE_TEMPLATE/bug_report.md`](C:/Users/matth/OneDrive/Desktop/company/PaletteSmith/.github/ISSUE_TEMPLATE/bug_report.md)
+- feature requests: [`.github/ISSUE_TEMPLATE/feature_request.md`](C:/Users/matth/OneDrive/Desktop/company/PaletteSmith/.github/ISSUE_TEMPLATE/feature_request.md)
+
+For general repo feedback, the standard issue template is also available:
+
+- general issue: [`.github/ISSUE_TEMPLATE/general-issue.md`](C:/Users/matth/OneDrive/Desktop/company/PaletteSmith/.github/ISSUE_TEMPLATE/general-issue.md)
+
+## Security
+
+If you believe you have found a security issue, please do not file a public issue.
+
+Review the disclosure guidance in [SECURITY.md](C:/Users/matth/OneDrive/Desktop/company/PaletteSmith/SECURITY.md:1) and report the issue privately instead.
+
 ## Publishing Checklist
 
 - Add support contact
