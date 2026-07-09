@@ -99,7 +99,7 @@ Still planned:
 - richer accessibility fixes
 - more component previews
 
-<<<<<<< HEAD
+
 ## Reporting Issues
 
 If you find a bug, please open a GitHub issue using the repo's issue templates:
@@ -117,12 +117,3 @@ If you believe you have found a security issue, please do not file a public issu
 
 Review the disclosure guidance in [SECURITY.md](C:/Users/matth/OneDrive/Desktop/company/PaletteSmith/SECURITY.md:1) and report the issue privately instead.
 
-## Publishing Checklist
-
-- Add support contact
-- Add Community listing copy
-- Review the plugin metadata in Figma
-- Complete the data/security form
-- Publish from `Plugins -> Manage plugins` in the Figma desktop app
-=======
->>>>>>> 57eb602bf72f84d6d7a8c3f7e48b88c5506a6dd9
