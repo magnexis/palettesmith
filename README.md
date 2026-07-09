@@ -99,10 +99,3 @@ Still planned:
 - richer accessibility fixes
 - more component previews
 
-## Publishing Checklist
-
-- Add support contact
-- Add Community listing copy
-- Review the plugin metadata in Figma
-- Complete the data/security form
-- Publish from `Plugins -> Manage plugins` in the Figma desktop app
