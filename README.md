@@ -1,9 +1,20 @@
-# PaletteSmith
+<p align="center">
+  <img src="./assets/logo.png" alt="PaletteSmith logo" width="120" />
+</p>
 
-PaletteSmith is a Figma plugin that turns a single base color into a design-system starter kit with palette ramps, semantic roles, Figma Variables, paint styles, and code exports.
+<h1 align="center">PaletteSmith</h1>
 
-Official Figma plugin:
-[PaletteSmith on Figma Community](https://www.figma.com/community/plugin/1656891050552747365)
+<p align="center">
+  <a href="https://www.figma.com/community/plugin/1656891050552747365">
+    <img src="https://img.shields.io/badge/Figma-Community%20Plugin-1F2937?logo=figma&logoColor=white" alt="Figma Community Plugin" />
+  </a>
+  <img src="https://img.shields.io/badge/Figma-Under%20Review-F24E1E?logo=figma&logoColor=white" alt="Figma Under Review" />
+  <img src="https://img.shields.io/badge/Built%20With-TypeScript-3178C6?logo=typescript&logoColor=white" alt="Built with TypeScript" />
+</p>
+
+<p align="center">
+  PaletteSmith turns a single base color into a design-system starter kit with palette ramps, semantic roles, Figma Variables, paint styles, and code exports.
+</p>
 
 ## Branding
 
