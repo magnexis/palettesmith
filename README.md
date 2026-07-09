@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/logo.png" alt="PaletteSmith logo" width="120" />
+  <img src="./assets/logo.png" alt="PaletteSmith logo" width="238" />
 </p>
 
 <h1 align="center">PaletteSmith</h1>
@@ -9,6 +9,7 @@
     <img src="https://img.shields.io/badge/Figma-Community%20Plugin-1F2937?logo=figma&logoColor=white" alt="Figma Community Plugin" />
   </a>
   <img src="https://img.shields.io/badge/Figma-Under%20Review-F24E1E?logo=figma&logoColor=white" alt="Figma Under Review" />
+  <img src="https://img.shields.io/badge/Built%20With-HTML-E34F26?logo=html5&logoColor=white" alt="Built with HTML" />
   <img src="https://img.shields.io/badge/Built%20With-TypeScript-3178C6?logo=typescript&logoColor=white" alt="Built with TypeScript" />
 </p>
 
