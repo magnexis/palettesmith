@@ -47,15 +47,39 @@ const FONT_SEMIBOLD: FontName = { family: "Inter", style: "Semi Bold" };
 const FONT_BOLD: FontName = { family: "Inter", style: "Bold" };
 const SHADE_KEYS = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"];
 
-function hexToRgb(hex: string): RGB {
-  const clean = hex.replace("#", "");
+function clamp(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+
+  return Math.max(min, Math.min(max, value));
+}
+
+function isValidHex(hex: unknown): hex is string {
+  return typeof hex === "string" && /^#?([0-9A-Fa-f]{6})$/.test(hex.trim());
+}
+
+function normalizeHex(hex: unknown, fallback = "#000000") {
+  if (!isValidHex(hex)) {
+    return fallback;
+  }
+
+  return `#${hex.trim().replace(/^#/, "").toUpperCase()}`;
+}
+
+function hexToRgb(hex: unknown): RGB {
+  const clean = normalizeHex(hex).replace("#", "");
   const bigint = parseInt(clean, 16);
 
   return {
-    r: ((bigint >> 16) & 255) / 255,
-    g: ((bigint >> 8) & 255) / 255,
-    b: (bigint & 255) / 255
+    r: clamp(((bigint >> 16) & 255) / 255, 0, 1),
+    g: clamp(((bigint >> 8) & 255) / 255, 0, 1),
+    b: clamp((bigint & 255) / 255, 0, 1)
   };
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 function removePaintStyleIfExists(name: string) {
@@ -84,31 +108,35 @@ function getOrCreateCollection(name: string) {
 }
 
 function syncCollectionModes(collection: VariableCollection, modeNames: string[]) {
-  const existingModes = [...collection.modes];
+  const targetModeNames = [...new Set(modeNames)].filter(Boolean);
   const modeIds: Record<string, string> = {};
 
-  for (const mode of existingModes) {
-    if (modeNames.includes(mode.name)) {
+  if (targetModeNames.length === 0) {
+    return modeIds;
+  }
+
+  for (const mode of [...collection.modes]) {
+    if (targetModeNames.includes(mode.name)) {
       modeIds[mode.name] = mode.modeId;
     }
   }
 
-  if (modeNames.length > 0 && existingModes.length > 0) {
-    const firstModeId = existingModes[0].modeId;
-    if (existingModes[0].name !== modeNames[0]) {
-      collection.renameMode(firstModeId, modeNames[0]);
+  for (const modeName of targetModeNames) {
+    if (modeIds[modeName]) {
+      continue;
     }
-    modeIds[modeNames[0]] = firstModeId;
-  }
 
-  for (const modeName of modeNames) {
-    if (!modeIds[modeName]) {
+    const reusableMode = [...collection.modes].find(mode => !targetModeNames.includes(mode.name));
+    if (reusableMode) {
+      collection.renameMode(reusableMode.modeId, modeName);
+      modeIds[modeName] = reusableMode.modeId;
+    } else {
       modeIds[modeName] = collection.addMode(modeName);
     }
   }
 
   for (const mode of [...collection.modes]) {
-    if (!modeNames.includes(mode.name)) {
+    if (!targetModeNames.includes(mode.name) && collection.modes.length > targetModeNames.length) {
       collection.removeMode(mode.modeId);
     }
   }
@@ -149,6 +177,10 @@ function applyNumberVariables(collection: VariableCollection, groupName: string,
   const modeId = ensureSingleModeCollection(collection, modeName);
 
   for (const [token, value] of Object.entries(tokens)) {
+    if (!isFiniteNumber(value)) {
+      continue;
+    }
+
     const variable = getOrCreateNumberVariable(collection, `${groupName}/${token}`);
     variable.setValueForMode(modeId, value);
   }
@@ -165,7 +197,8 @@ function applyStringVariables(collection: VariableCollection, groupName: string,
 
 function setVariableCodeSyntax(variable: Variable, name: string) {
   const normalized = name.replace(/\//g, ".").replace(/[^a-zA-Z0-9._-]/g, "-");
-  variable.setVariableCodeSyntax("WEB", `var(--${name.replace(/\//g, "-")})`);
+  const cssName = normalized.replace(/\./g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  variable.setVariableCodeSyntax("WEB", `var(--${cssName || "token"})`);
   variable.setVariableCodeSyntax("ANDROID", normalized.replace(/\./g, "_"));
   variable.setVariableCodeSyntax("iOS", normalized);
 }
@@ -178,7 +211,7 @@ function applyColorVariables(
   darkShades: ShadeMap | undefined,
   semanticModel: SemanticModel
 ) {
-  const themeNames = Object.keys(themes);
+  const themeNames = Object.keys(themes).length ? Object.keys(themes) : ["light"];
   const modeIds = syncCollectionModes(collection, themeNames);
   const variableRegistry = new Map<string, Variable>();
 
@@ -191,8 +224,8 @@ function applyColorVariables(
   const setThemeVariable = (variableName: string, key: string) => {
     const variable = registerVariable(variableName, getOrCreateColorVariable(collection, variableName));
     for (const [themeName, modeId] of Object.entries(modeIds)) {
-      const hex = themes[themeName][key];
-      if (hex) {
+      const hex = themes[themeName]?.[key];
+      if (isValidHex(hex)) {
         variable.setValueForMode(modeId, hexToRgb(hex));
       }
     }
@@ -347,6 +380,7 @@ function getTextColorForSwatch(shade: string) {
 }
 
 function makeSwatchCard(shade: string, hex: string) {
+  const swatchHex = normalizeHex(hex);
   const card = makeFrame(`Swatch ${shade}`, 150, 98);
   card.layoutMode = "VERTICAL";
   card.counterAxisSizingMode = "FIXED";
@@ -358,12 +392,12 @@ function makeSwatchCard(shade: string, hex: string) {
   card.paddingBottom = 14;
   card.cornerRadius = 18;
   card.resize(150, 98);
-  applyFill(card, hex);
+  applyFill(card, swatchHex);
   card.strokes = [{ type: "SOLID", color: hexToRgb("#FFFFFF"), opacity: 0.12 }];
 
   const textColor = getTextColorForSwatch(shade);
   const title = makeText(shade, 14, FONT_BOLD, textColor);
-  const value = makeText(hex, 12, FONT_MEDIUM, textColor);
+  const value = makeText(swatchHex, 12, FONT_MEDIUM, textColor);
   card.appendChild(title);
   card.appendChild(value);
 

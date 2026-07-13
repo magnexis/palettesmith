@@ -841,16 +841,34 @@
 
     let currentExportType = "css";
 
+    function clamp(value, min, max) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) {
+        return min;
+      }
+      return Math.max(min, Math.min(max, number));
+    }
+
+    function normalizeHue(hue) {
+      const number = Number(hue);
+      if (!Number.isFinite(number)) {
+        return 0;
+      }
+      return ((number % 360) + 360) % 360;
+    }
+
     function isValidHex(hex) {
-      return /^#?([0-9A-Fa-f]{6})$/.test(hex);
+      return /^#?([0-9A-Fa-f]{6})$/.test(String(hex || "").trim());
     }
 
     function normalizeHex(hex) {
-      return hex.startsWith("#") ? hex.toUpperCase() : `#${hex.toUpperCase()}`;
+      const clean = String(hex || "").trim().replace(/^#/, "").slice(0, 6);
+      return `#${clean.toUpperCase().padEnd(6, "0")}`;
     }
 
     function hexToRgb(hex) {
-      const clean = hex.replace("#", "");
+      const safeHex = isValidHex(hex) ? normalizeHex(hex) : "#000000";
+      const clean = safeHex.replace("#", "");
       return {
         r: parseInt(clean.slice(0, 2), 16),
         g: parseInt(clean.slice(2, 4), 16),
@@ -860,15 +878,15 @@
 
     function rgbToHex(r, g, b) {
       return "#" + [r, g, b]
-        .map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0"))
+        .map(v => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, "0"))
         .join("")
         .toUpperCase();
     }
 
     function rgbToHsl(rgb) {
-      const r = rgb.r / 255;
-      const g = rgb.g / 255;
-      const b = rgb.b / 255;
+      const r = clamp(rgb && rgb.r, 0, 255) / 255;
+      const g = clamp(rgb && rgb.g, 0, 255) / 255;
+      const b = clamp(rgb && rgb.b, 0, 255) / 255;
       const max = Math.max(r, g, b);
       const min = Math.min(r, g, b);
       const delta = max - min;
@@ -876,38 +894,32 @@
       const l = (max + min) / 2;
       let s = 0;
 
-      if (delta !== 0) {
-        s = delta / (1 - Math.abs((2 * l) - 1));
+      if (delta > Number.EPSILON) {
+        const denominator = 1 - Math.abs((2 * l) - 1);
+        s = denominator > Number.EPSILON ? delta / denominator : 0;
 
-        switch (max) {
-          case r:
-            h = 60 * (((g - b) / delta) % 6);
-            break;
-          case g:
-            h = 60 * (((b - r) / delta) + 2);
-            break;
-          default:
-            h = 60 * (((r - g) / delta) + 4);
-            break;
+        if (max === r) {
+          h = 60 * (((g - b) / delta) % 6);
+        } else if (max === g) {
+          h = 60 * (((b - r) / delta) + 2);
+        } else {
+          h = 60 * (((r - g) / delta) + 4);
         }
       }
 
-      if (h < 0) {
-        h += 360;
-      }
-
       return {
-        h,
-        s: s * 100,
-        l: l * 100
+        h: normalizeHue(h),
+        s: clamp(s * 100, 0, 100),
+        l: clamp(l * 100, 0, 100)
       };
     }
 
     function hslToRgb(h, s, l) {
-      const saturation = s / 100;
-      const lightness = l / 100;
+      const hue = normalizeHue(h);
+      const saturation = clamp(s, 0, 100) / 100;
+      const lightness = clamp(l, 0, 100) / 100;
       const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation;
-      const segment = h / 60;
+      const segment = hue / 60;
       const x = chroma * (1 - Math.abs((segment % 2) - 1));
       let r1 = 0;
       let g1 = 0;
@@ -936,35 +948,36 @@
       const match = lightness - (chroma / 2);
 
       return {
-        r: Math.round((r1 + match) * 255),
-        g: Math.round((g1 + match) * 255),
-        b: Math.round((b1 + match) * 255)
+        r: clamp((r1 + match) * 255, 0, 255),
+        g: clamp((g1 + match) * 255, 0, 255),
+        b: clamp((b1 + match) * 255, 0, 255)
       };
     }
 
     function shiftHue(baseHex, hueShift, saturationDelta, lightnessDelta) {
       const baseHsl = rgbToHsl(hexToRgb(baseHex));
       const shifted = hslToRgb(
-        (baseHsl.h + hueShift + 360) % 360,
-        Math.max(20, Math.min(95, baseHsl.s + saturationDelta)),
-        Math.max(18, Math.min(82, baseHsl.l + lightnessDelta))
+        baseHsl.h + hueShift,
+        clamp(baseHsl.s + saturationDelta, 20, 95),
+        clamp(baseHsl.l + lightnessDelta, 18, 82)
       );
 
       return rgbToHex(shifted.r, shifted.g, shifted.b);
     }
 
     function mix(colorA, colorB, amount) {
+      const ratio = clamp(amount, 0, 1);
       return {
-        r: colorA.r + (colorB.r - colorA.r) * amount,
-        g: colorA.g + (colorB.g - colorA.g) * amount,
-        b: colorA.b + (colorB.b - colorA.b) * amount
+        r: clamp(colorA && colorA.r, 0, 255) + (clamp(colorB && colorB.r, 0, 255) - clamp(colorA && colorA.r, 0, 255)) * ratio,
+        g: clamp(colorA && colorA.g, 0, 255) + (clamp(colorB && colorB.g, 0, 255) - clamp(colorA && colorA.g, 0, 255)) * ratio,
+        b: clamp(colorA && colorA.b, 0, 255) + (clamp(colorB && colorB.b, 0, 255) - clamp(colorA && colorA.b, 0, 255)) * ratio
       };
     }
 
     function luminance(hex) {
       const { r, g, b } = hexToRgb(hex);
       const values = [r, g, b].map(channel => {
-        const normalized = channel / 255;
+        const normalized = clamp(channel, 0, 255) / 255;
         return normalized <= 0.03928
           ? normalized / 12.92
           : ((normalized + 0.055) / 1.055) ** 2.4;
@@ -982,11 +995,11 @@
     }
 
     function formatContrast(ratio) {
-      return ratio.toFixed(2) + ":1";
+      return Number.isFinite(ratio) ? ratio.toFixed(2) + ":1" : "0.00:1";
     }
 
     function getContrastBadge(ratio) {
-      if (ratio >= 4.5) {
+      if (Number.isFinite(ratio) && ratio >= 4.5) {
         return { label: "AA", className: "score good" };
       }
 
@@ -1020,19 +1033,10 @@
     }
 
     function generateDarkPalette(shades) {
-      return {
-        "50": shades["950"],
-        "100": shades["900"],
-        "200": shades["800"],
-        "300": shades["700"],
-        "400": shades["600"],
-        "500": shades["500"],
-        "600": shades["400"],
-        "700": shades["300"],
-        "800": shades["200"],
-        "900": shades["100"],
-        "950": shades["50"]
-      };
+      return shadeKeys.reduce((palette, key) => {
+        palette[key] = shades[key] || "#000000";
+        return palette;
+      }, {});
     }
 
     function generateSemanticColors(baseHex) {
@@ -1078,7 +1082,7 @@
       };
     }
 
-    function generateSemanticModel(includeDark) {
+    function generateSemanticModel(includeDark, themes) {
       const model = {
         light: {
           background: { type: "palette", path: ["base", "50"] },
@@ -1087,7 +1091,7 @@
           text: { type: "palette", path: ["base", "950"] },
           textMuted: { type: "palette", path: ["base", "700"] },
           accent: { type: "semantic", path: ["accent", "600"] },
-          accentText: { type: "literal", value: "#FFFFFF" },
+          accentText: { type: "literal", value: themes.light.accentText },
           success: { type: "semantic", path: ["success", "600"] },
           warning: { type: "semantic", path: ["warning", "500"] },
           danger: { type: "semantic", path: ["danger", "600"] }
@@ -1102,7 +1106,7 @@
           text: { type: "palette", path: ["dark", "50"] },
           textMuted: { type: "palette", path: ["dark", "300"] },
           accent: { type: "semantic", path: ["accent", "400"] },
-          accentText: { type: "literal", value: "#0F172A" },
+          accentText: { type: "literal", value: themes.dark.accentText },
           success: { type: "semantic", path: ["success", "400"] },
           warning: { type: "semantic", path: ["warning", "400"] },
           danger: { type: "semantic", path: ["danger", "400"] }
@@ -1160,10 +1164,13 @@
     }
 
     function toKebabCase(text) {
-      return text
+      return String(text || "primary")
         .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
         .replace(/\s+/g, "-")
-        .toLowerCase();
+        .replace(/[^a-zA-Z0-9_-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase() || "primary";
     }
 
     function buildCssExport(system) {
@@ -1275,10 +1282,16 @@ ${shadowEntries}
 
     function renderThemePreview() {
       const light = systemState.themes.light;
-      const dark = systemState.themes.dark;
+      const previewDarkShades = Object.keys(systemState.darkShades).length
+        ? systemState.darkShades
+        : generateDarkPalette(systemState.shades);
+      const fallbackDark = generateThemes(systemState.shades, previewDarkShades, systemState.semantic).dark;
+      const dark = systemState.themes.dark || fallbackDark;
 
       document.getElementById("lightThemeDescription").textContent = `Background ${light.background}, surface ${light.surface}, accent ${light.accent}.`;
-      document.getElementById("darkThemeDescription").textContent = `Background ${dark.background}, surface ${dark.surface}, accent ${dark.accent}.`;
+      document.getElementById("darkThemeDescription").textContent = systemState.themes.dark
+        ? `Background ${dark.background}, surface ${dark.surface}, accent ${dark.accent}.`
+        : `Dark mode is off. Enable it to export background ${dark.background}, surface ${dark.surface}, and accent ${dark.accent}.`;
 
       const previewCard = document.getElementById("previewCard");
       previewCard.style.background = `linear-gradient(180deg, ${light.surface}, ${light.background})`;
@@ -1329,7 +1342,7 @@ ${shadowEntries}
       document.getElementById("previewHex").textContent = systemState.shades["500"];
       document.getElementById("previewTitle").textContent = `${systemState.paletteName} Surface`;
       document.getElementById("previewBody").textContent = `Primary accent ${systemState.themes.light.accent} with ${Object.keys(systemState.spacing).length} spacing steps and ${Object.keys(systemState.radius).length} radius presets.`;
-      document.getElementById("figmaInsight").textContent = `Paint styles plus ${Object.keys(systemState.themes.light).length} light/dark color variables.`;
+      document.getElementById("figmaInsight").textContent = `Paint styles plus ${Object.keys(systemState.themes).join(" / ")} color variable modes.`;
       document.getElementById("codeInsight").textContent = `Exports include ${Object.keys(systemState.semantic).join(", ")} semantic color groups.`;
       document.getElementById("builderInsight").textContent = `System namespace: ${systemState.paletteName}. Ready for Figma and code exports.`;
     }
@@ -1363,7 +1376,7 @@ ${shadowEntries}
       const darkShades = generateDarkPalette(shades);
       const semantic = generateSemanticColors(hex);
       const themes = generateThemes(shades, darkShades, semantic);
-      const semanticModel = generateSemanticModel(includeDark);
+      const semanticModel = generateSemanticModel(includeDark, themes);
       const typography = generateTypography();
       const spacing = generateSpacing();
       const radius = generateRadius();
